@@ -4,7 +4,7 @@
 GET {{KiteSocial.API_HostAddress}}/api/health
 Accept: application/json
 
-### 2. Register User
+### 2. Register New User
 # @name register
 POST {{KiteSocial.API_HostAddress}}/api/auth/register
 Content-Type: application/json
@@ -13,8 +13,8 @@ Content-Type: application/json
   "email": "rider@kitesocial.com",
   "username": "kiterider",
   "password": "Password123!",
-  "fullName": "Alex Rider",
-  "skillLevel": 2
+  "fullName": "Alex Dimitrov",
+  "skillLevel": 3
 }
 
 ### 3. Login
@@ -27,8 +27,96 @@ Content-Type: application/json
   "password": "Password123!"
 }
 
-### 4. Get Current User Profile (Requires Bearer token)
-@authToken = {{login.response.body.token}}
+### 4. Get Current User Profile
+@token = {{login.response.body.token}}
 GET {{KiteSocial.API_HostAddress}}/api/auth/me
-Authorization: Bearer {{authToken}}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### 5. Create a Kite Spot
+# @name createSpot
+POST {{KiteSocial.API_HostAddress}}/api/spots
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Gradina Beach",
+  "country": "Bulgaria",
+  "region": "Sozopol",
+  "latitude": 42.4172,
+  "longitude": 27.6715,
+  "waterType": 2,
+  "bestWindDirections": "NE, E, SE",
+  "description": "Popular Bulgarian spot with thermal winds during summer and shallow bay.",
+  "imageUrl": "https://example.com/gradina.jpg"
+}
+
+### 6. Get Spots (with optional search and filter)
+GET {{KiteSocial.API_HostAddress}}/api/spots?country=Bulgaria
+Accept: application/json
+
+### 7. Log a Kite Session
+@spotId = {{createSpot.response.body.id}}
+# @name createSession
+POST {{KiteSocial.API_HostAddress}}/api/sessions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "spotId": "{{spotId}}",
+  "sessionDate": "2026-09-08T10:00:00Z",
+  "durationMinutes": 120,
+  "windSpeedKnots": 22.5,
+  "kiteSize": 9.0,
+  "boardType": 1,
+  "maxJumpHeightMeters": 11.4,
+  "notes": "Epic thermal wind session, solid boost on 9m!"
+}
+
+### 8. Get User Sessions & Stats
+GET {{KiteSocial.API_HostAddress}}/api/sessions/my
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### 9. Get User Session Statistics
+GET {{KiteSocial.API_HostAddress}}/api/sessions/stats
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### 10. Create a Post
+# @name createPost
+@sessionId = {{createSession.response.body.id}}
+POST {{KiteSocial.API_HostAddress}}/api/posts
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "content": "Wind was blowing 22 knots at Gradina today! Hit a new PR: 11.4m jump! 🤙💨",
+  "mediaUrl": "https://example.com/jump.jpg",
+  "spotId": "{{spotId}}",
+  "kiteSessionId": "{{sessionId}}"
+}
+
+### 11. Toggle Like on Post
+@postId = {{createPost.response.body.id}}
+POST {{KiteSocial.API_HostAddress}}/api/posts/{{postId}}/like
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### 12. Add Comment to Post
+POST {{KiteSocial.API_HostAddress}}/api/posts/{{postId}}/comments
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "content": "Insane boost man, nice session!"
+}
+
+### 13. Get Post Comments
+GET {{KiteSocial.API_HostAddress}}/api/posts/{{postId}}/comments
+Accept: application/json
+
+### 14. Get Social Feed
+GET {{KiteSocial.API_HostAddress}}/api/posts?page=1&pageSize=10
+Authorization: Bearer {{token}}
 Accept: application/json
