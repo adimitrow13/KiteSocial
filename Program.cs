@@ -1,10 +1,12 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using KiteSocial.API.Data;
 using KiteSocial.API.Models.Entities;
 using KiteSocial.API.Services;
 using KiteSocial.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -75,6 +77,29 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
+// Rate Limiting protection (DoS and brute-force mitigation)
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Strict rate limiter for authentication endpoints (5 requests/minute per client)
+    options.AddFixedWindowLimiter("auth-limit", opt =>
+    {
+        opt.PermitLimit = 5;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueLimit = 0;
+    });
+
+    // General rate limiter for standard API endpoints (120 requests/minute per client)
+    options.AddSlidingWindowLimiter("api-limit", opt =>
+    {
+        opt.PermitLimit = 120;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.SegmentsPerWindow = 4;
+        opt.QueueLimit = 0;
+    });
+});
+
 // Application Services
 builder.Services.AddScoped<ITokenService, TokenService>();
 
@@ -95,9 +120,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseRateLimiter();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers();
+app.MapControllers().RequireRateLimiting("api-limit");
 
 app.Run();
