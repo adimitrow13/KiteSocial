@@ -50,8 +50,10 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
     .AddEntityFrameworkStores<KiteSocialDbContext>()
     .AddDefaultTokenProviders();
 
-// JWT Authentication configuration
-var jwtKey = builder.Configuration["Jwt:Key"] 
+// JWT Authentication configuration (prioritizing Environment Variables for production)
+var jwtKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY")
+    ?? Environment.GetEnvironmentVariable("JWT_KEY")
+    ?? builder.Configuration["Jwt:Key"] 
     ?? throw new InvalidOperationException("Jwt:Key configuration is missing.");
 var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 
@@ -100,6 +102,17 @@ builder.Services.AddRateLimiter(options =>
     });
 });
 
+// CORS policy for Flutter client (Web, Mobile, Desktop)
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("FlutterClientPolicy", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 // Application Services
 builder.Services.AddScoped<ITokenService, TokenService>();
 
@@ -117,6 +130,8 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
+
+app.UseCors("FlutterClientPolicy");
 
 app.UseHttpsRedirection();
 
