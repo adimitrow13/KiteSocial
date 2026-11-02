@@ -14,9 +14,21 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
-// Database context
+// Database context (Flexible support for SQLite and PostgreSQL)
+var dbProvider = builder.Configuration["DatabaseProvider"] ?? "Sqlite";
 builder.Services.AddDbContext<KiteSocialDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+{
+    if (dbProvider.Equals("PostgreSql", StringComparison.OrdinalIgnoreCase))
+    {
+        var connStr = builder.Configuration.GetConnectionString("PostgreSql") 
+            ?? builder.Configuration.GetConnectionString("DefaultConnection");
+        options.UseNpgsql(connStr);
+    }
+    else
+    {
+        options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
+    }
+});
 
 // ASP.NET Core Identity configuration
 builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
@@ -62,6 +74,13 @@ builder.Services.AddAuthorization();
 builder.Services.AddScoped<ITokenService, TokenService>();
 
 var app = builder.Build();
+
+// Auto-apply database migrations on startup
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<KiteSocialDbContext>();
+    db.Database.Migrate();
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
