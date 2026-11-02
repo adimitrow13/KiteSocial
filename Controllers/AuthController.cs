@@ -77,7 +77,11 @@ public class AuthController : ControllerBase
             return Unauthorized(new { Message = "Invalid username/email or password." });
         }
 
-        var result = await _signInManager.CheckPasswordSignInAsync(user, dto.Password, lockoutOnFailure: false);
+        var result = await _signInManager.CheckPasswordSignInAsync(user, dto.Password, lockoutOnFailure: true);
+        if (result.IsLockedOut)
+        {
+            return StatusCode(StatusCodes.Status423Locked, new { Message = "Account is locked due to too many failed attempts. Please try again in 15 minutes." });
+        }
         if (!result.Succeeded)
         {
             return Unauthorized(new { Message = "Invalid username/email or password." });
