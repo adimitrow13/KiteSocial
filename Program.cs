@@ -115,6 +115,9 @@ builder.Services.AddCors(options =>
 
 // Application Services
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<ISpotService, SpotService>();
+builder.Services.AddScoped<ISessionService, SessionService>();
+builder.Services.AddScoped<IPostService, PostService>();
 
 var app = builder.Build();
 

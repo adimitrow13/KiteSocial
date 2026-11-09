@@ -1,11 +1,9 @@
 using System.Security.Claims;
-using KiteSocial.API.Data;
 using KiteSocial.API.DTOs.Comments;
 using KiteSocial.API.DTOs.Posts;
-using KiteSocial.API.Models.Entities;
+using KiteSocial.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace KiteSocial.API.Controllers;
 
@@ -13,11 +11,11 @@ namespace KiteSocial.API.Controllers;
 [Route("api/[controller]")]
 public class PostsController : ControllerBase
 {
-    private readonly KiteSocialDbContext _context;
+    private readonly IPostService _postService;
 
-    public PostsController(KiteSocialDbContext context)
+    public PostsController(IPostService postService)
     {
-        _context = context;
+        _postService = postService;
     }
 
     [HttpGet]
@@ -28,50 +26,7 @@ public class PostsController : ControllerBase
         [FromQuery] int pageSize = 20)
     {
         var currentUserId = GetCurrentUserId();
-
-        var query = _context.Posts
-            .Include(p => p.User)
-            .Include(p => p.Spot)
-            .Include(p => p.Likes)
-            .Include(p => p.Comments)
-            .AsNoTracking()
-            .AsQueryable();
-
-        if (spotId.HasValue)
-        {
-            query = query.Where(p => p.SpotId == spotId.Value);
-        }
-
-        if (userId.HasValue)
-        {
-            query = query.Where(p => p.UserId == userId.Value);
-        }
-
-        pageSize = Math.Clamp(pageSize, 1, 50);
-        page = Math.Max(1, page);
-
-        var posts = await query
-            .OrderByDescending(p => p.CreatedAtUtc)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(p => new PostDto
-            {
-                Id = p.Id,
-                UserId = p.UserId,
-                UserName = p.User.UserName ?? string.Empty,
-                UserAvatarUrl = p.User.AvatarUrl,
-                Content = p.Content,
-                MediaUrl = p.MediaUrl,
-                SpotId = p.SpotId,
-                SpotName = p.Spot != null ? p.Spot.Name : null,
-                KiteSessionId = p.KiteSessionId,
-                LikesCount = p.Likes.Count,
-                CommentsCount = p.Comments.Count,
-                IsLikedByCurrentUser = currentUserId.HasValue && p.Likes.Any(l => l.UserId == currentUserId.Value),
-                CreatedAtUtc = p.CreatedAtUtc
-            })
-            .ToListAsync();
-
+        var posts = await _postService.GetPostsAsync(spotId, userId, page, pageSize, currentUserId);
         return Ok(posts);
     }
 
@@ -79,36 +34,14 @@ public class PostsController : ControllerBase
     public async Task<ActionResult<PostDto>> GetPost(Guid id)
     {
         var currentUserId = GetCurrentUserId();
-
-        var post = await _context.Posts
-            .Include(p => p.User)
-            .Include(p => p.Spot)
-            .Include(p => p.Likes)
-            .Include(p => p.Comments)
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.Id == id);
+        var post = await _postService.GetPostByIdAsync(id, currentUserId);
 
         if (post == null)
         {
             return NotFound(new { Message = "Post not found." });
         }
 
-        return Ok(new PostDto
-        {
-            Id = post.Id,
-            UserId = post.UserId,
-            UserName = post.User.UserName ?? string.Empty,
-            UserAvatarUrl = post.User.AvatarUrl,
-            Content = post.Content,
-            MediaUrl = post.MediaUrl,
-            SpotId = post.SpotId,
-            SpotName = post.Spot?.Name,
-            KiteSessionId = post.KiteSessionId,
-            LikesCount = post.Likes.Count,
-            CommentsCount = post.Comments.Count,
-            IsLikedByCurrentUser = currentUserId.HasValue && post.Likes.Any(l => l.UserId == currentUserId.Value),
-            CreatedAtUtc = post.CreatedAtUtc
-        });
+        return Ok(post);
     }
 
     [Authorize]
@@ -116,58 +49,15 @@ public class PostsController : ControllerBase
     public async Task<ActionResult<PostDto>> CreatePost([FromBody] CreatePostDto dto)
     {
         var userId = GetCurrentUserId();
-        if (!userId.HasValue)
+        if (!userId.HasValue) return Unauthorized();
+
+        var (post, errorMessage) = await _postService.CreatePostAsync(dto, userId.Value);
+        if (errorMessage != null)
         {
-            return Unauthorized();
+            return BadRequest(new { Message = errorMessage });
         }
 
-        if (dto.SpotId.HasValue && !await _context.Spots.AnyAsync(s => s.Id == dto.SpotId.Value))
-        {
-            return BadRequest(new { Message = "Referenced spot does not exist." });
-        }
-
-        if (dto.KiteSessionId.HasValue && !await _context.KiteSessions.AnyAsync(s => s.Id == dto.KiteSessionId.Value))
-        {
-            return BadRequest(new { Message = "Referenced session does not exist." });
-        }
-
-        var post = new Post
-        {
-            UserId = userId.Value,
-            Content = dto.Content,
-            MediaUrl = dto.MediaUrl,
-            SpotId = dto.SpotId,
-            KiteSessionId = dto.KiteSessionId,
-            CreatedAtUtc = DateTime.UtcNow
-        };
-
-        _context.Posts.Add(post);
-        await _context.SaveChangesAsync();
-
-        var user = await _context.Users.FindAsync(userId.Value);
-        string? spotName = null;
-        if (dto.SpotId.HasValue)
-        {
-            var spot = await _context.Spots.FindAsync(dto.SpotId.Value);
-            spotName = spot?.Name;
-        }
-
-        return CreatedAtAction(nameof(GetPost), new { id = post.Id }, new PostDto
-        {
-            Id = post.Id,
-            UserId = post.UserId,
-            UserName = user?.UserName ?? string.Empty,
-            UserAvatarUrl = user?.AvatarUrl,
-            Content = post.Content,
-            MediaUrl = post.MediaUrl,
-            SpotId = post.SpotId,
-            SpotName = spotName,
-            KiteSessionId = post.KiteSessionId,
-            LikesCount = 0,
-            CommentsCount = 0,
-            IsLikedByCurrentUser = false,
-            CreatedAtUtc = post.CreatedAtUtc
-        });
+        return CreatedAtAction(nameof(GetPost), new { id = post!.Id }, post);
     }
 
     [Authorize]
@@ -175,26 +65,16 @@ public class PostsController : ControllerBase
     public async Task<IActionResult> DeletePost(Guid id)
     {
         var userId = GetCurrentUserId();
-        if (!userId.HasValue)
+        if (!userId.HasValue) return Unauthorized();
+
+        var result = await _postService.DeletePostAsync(id, userId.Value);
+        return result switch
         {
-            return Unauthorized();
-        }
-
-        var post = await _context.Posts.FindAsync(id);
-        if (post == null)
-        {
-            return NotFound(new { Message = "Post not found." });
-        }
-
-        if (post.UserId != userId.Value)
-        {
-            return Forbid();
-        }
-
-        _context.Posts.Remove(post);
-        await _context.SaveChangesAsync();
-
-        return NoContent();
+            PostDeleteResult.NotFound => NotFound(new { Message = "Post not found." }),
+            PostDeleteResult.Forbidden => Forbid(),
+            PostDeleteResult.Success => NoContent(),
+            _ => BadRequest()
+        };
     }
 
     [Authorize]
@@ -202,73 +82,25 @@ public class PostsController : ControllerBase
     public async Task<ActionResult<LikeResponseDto>> ToggleLike(Guid id)
     {
         var userId = GetCurrentUserId();
-        if (!userId.HasValue)
-        {
-            return Unauthorized();
-        }
+        if (!userId.HasValue) return Unauthorized();
 
-        var postExists = await _context.Posts.AnyAsync(p => p.Id == id);
-        if (!postExists)
+        var likeResponse = await _postService.ToggleLikeAsync(id, userId.Value);
+        if (likeResponse == null)
         {
             return NotFound(new { Message = "Post not found." });
         }
 
-        var existingLike = await _context.Likes
-            .FirstOrDefaultAsync(l => l.PostId == id && l.UserId == userId.Value);
-
-        bool isLiked;
-        if (existingLike != null)
-        {
-            _context.Likes.Remove(existingLike);
-            isLiked = false;
-        }
-        else
-        {
-            _context.Likes.Add(new Like
-            {
-                PostId = id,
-                UserId = userId.Value,
-                CreatedAtUtc = DateTime.UtcNow
-            });
-            isLiked = true;
-        }
-
-        await _context.SaveChangesAsync();
-
-        var likesCount = await _context.Likes.CountAsync(l => l.PostId == id);
-
-        return Ok(new LikeResponseDto
-        {
-            PostId = id,
-            LikesCount = likesCount,
-            IsLiked = isLiked
-        });
+        return Ok(likeResponse);
     }
 
     [HttpGet("{id:guid}/comments")]
     public async Task<ActionResult<IEnumerable<CommentDto>>> GetComments(Guid id)
     {
-        var postExists = await _context.Posts.AnyAsync(p => p.Id == id);
-        if (!postExists)
+        var comments = await _postService.GetCommentsAsync(id);
+        if (comments == null)
         {
             return NotFound(new { Message = "Post not found." });
         }
-
-        var comments = await _context.Comments
-            .Include(c => c.User)
-            .Where(c => c.PostId == id)
-            .OrderBy(c => c.CreatedAtUtc)
-            .Select(c => new CommentDto
-            {
-                Id = c.Id,
-                PostId = c.PostId,
-                UserId = c.UserId,
-                UserName = c.User.UserName ?? string.Empty,
-                UserAvatarUrl = c.User.AvatarUrl,
-                Content = c.Content,
-                CreatedAtUtc = c.CreatedAtUtc
-            })
-            .ToListAsync();
 
         return Ok(comments);
     }
@@ -278,45 +110,37 @@ public class PostsController : ControllerBase
     public async Task<ActionResult<CommentDto>> AddComment(Guid id, [FromBody] CreateCommentDto dto)
     {
         var userId = GetCurrentUserId();
-        if (!userId.HasValue)
-        {
-            return Unauthorized();
-        }
+        if (!userId.HasValue) return Unauthorized();
 
-        var postExists = await _context.Posts.AnyAsync(p => p.Id == id);
-        if (!postExists)
+        var comment = await _postService.AddCommentAsync(id, dto, userId.Value);
+        if (comment == null)
         {
             return NotFound(new { Message = "Post not found." });
         }
 
-        var comment = new Comment
+        return CreatedAtAction(nameof(GetPost), new { id }, comment);
+    }
+
+    [Authorize]
+    [HttpDelete("{id:guid}/comments/{commentId:guid}")]
+    public async Task<IActionResult> DeleteComment(Guid id, Guid commentId)
+    {
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue) return Unauthorized();
+
+        var result = await _postService.DeleteCommentAsync(id, commentId, userId.Value);
+        return result switch
         {
-            PostId = id,
-            UserId = userId.Value,
-            Content = dto.Content,
-            CreatedAtUtc = DateTime.UtcNow
+            PostDeleteResult.NotFound => NotFound(new { Message = "Comment not found." }),
+            PostDeleteResult.Forbidden => Forbid(),
+            PostDeleteResult.Success => NoContent(),
+            _ => BadRequest()
         };
-
-        _context.Comments.Add(comment);
-        await _context.SaveChangesAsync();
-
-        var user = await _context.Users.FindAsync(userId.Value);
-
-        return Ok(new CommentDto
-        {
-            Id = comment.Id,
-            PostId = comment.PostId,
-            UserId = comment.UserId,
-            UserName = user?.UserName ?? string.Empty,
-            UserAvatarUrl = user?.AvatarUrl,
-            Content = comment.Content,
-            CreatedAtUtc = comment.CreatedAtUtc
-        });
     }
 
     private Guid? GetCurrentUserId()
     {
         var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return Guid.TryParse(userIdStr, out var id) ? id : null;
+        return Guid.TryParse(userIdStr, out var userId) ? userId : null;
     }
 }
