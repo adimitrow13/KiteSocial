@@ -22,12 +22,17 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 // Database context (Flexible support for SQLite and PostgreSQL)
-var dbProvider = builder.Configuration["DatabaseProvider"] ?? "Sqlite";
+var dbProvider = Environment.GetEnvironmentVariable("DATABASE_PROVIDER")
+    ?? builder.Configuration["DatabaseProvider"] 
+    ?? "Sqlite";
+
 builder.Services.AddDbContext<KiteSocialDbContext>(options =>
 {
     if (dbProvider.Equals("PostgreSql", StringComparison.OrdinalIgnoreCase))
     {
-        var connStr = builder.Configuration.GetConnectionString("PostgreSql") 
+        var connStr = Environment.GetEnvironmentVariable("POSTGRES_CONNECTION_STRING")
+            ?? Environment.GetEnvironmentVariable("DATABASE_URL")
+            ?? builder.Configuration.GetConnectionString("PostgreSql") 
             ?? builder.Configuration.GetConnectionString("DefaultConnection");
         options.UseNpgsql(connStr);
     }
@@ -58,8 +63,12 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
 // JWT Authentication configuration (prioritizing Environment Variables for production)
 var jwtKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY")
     ?? Environment.GetEnvironmentVariable("JWT_KEY")
-    ?? builder.Configuration["Jwt:Key"] 
-    ?? throw new InvalidOperationException("Jwt:Key configuration is missing.");
+    ?? builder.Configuration["Jwt:Key"];
+
+if (string.IsNullOrWhiteSpace(jwtKey))
+{
+    throw new InvalidOperationException("Critical Security Failure: JWT Secret Key is missing. Set 'JWT_SECRET_KEY' environment variable.");
+}
 var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 
 builder.Services.AddAuthentication(options =>
