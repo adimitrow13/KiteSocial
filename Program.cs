@@ -1,6 +1,7 @@
 using System.Text;
 using System.Threading.RateLimiting;
 using KiteSocial.API.Data;
+using KiteSocial.API.Infrastructure;
 using KiteSocial.API.Models.Entities;
 using KiteSocial.API.Services;
 using KiteSocial.API.Services.Interfaces;
@@ -15,6 +16,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+
+// Global Exception Handling & RFC 7807 ProblemDetails
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 
 // Database context (Flexible support for SQLite and PostgreSQL)
 var dbProvider = builder.Configuration["DatabaseProvider"] ?? "Sqlite";
@@ -129,6 +134,8 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Configure the HTTP request pipeline.
+app.UseExceptionHandler();
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();

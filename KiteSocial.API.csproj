@@ -15,7 +15,20 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.11" />
+    <PackageReference Include="Moq" Version="4.21.0" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <PackageReference Include="xunit.v3" Version="4.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="KiteSocial.Test/**" />
+    <Compile Remove="KiteSocial.Tests/**" />
+    <Content Remove="KiteSocial.Test/**" />
+    <Content Remove="KiteSocial.Tests/**" />
+    <EmbeddedResource Remove="KiteSocial.Test/**" />
+    <EmbeddedResource Remove="KiteSocial.Tests/**" />
+    <None Remove="KiteSocial.Test/**" />
+    <None Remove="KiteSocial.Tests/**" />
   </ItemGroup>
 
 </Project>
