@@ -1,0 +1,14 @@
+**/.git
+**/.gitignore
+**/.vs
+**/.vscode
+**/.idea
+**/bin
+**/obj
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/kite_social_app
+**/KiteSocial.Test
+**/KiteSocial.Tests
+**/*.md

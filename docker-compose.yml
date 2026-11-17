@@ -1,4 +1,20 @@
 services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kitesocial-api
+    restart: unless-stopped
+    ports:
+      - "5067:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - DATABASE_PROVIDER=PostgreSql
+      - POSTGRES_CONNECTION_STRING=Host=postgres;Port=5432;Database=kitesocial;Username=postgres;Password=postgrespassword
+      - JWT_SECRET_KEY=KiteSocialSuperSecretKeyForJwtAuthentication2026!#StrongKey
+    depends_on:
+      - postgres
+
   postgres:
     image: postgres:16-alpine
     container_name: kitesocial-postgres
