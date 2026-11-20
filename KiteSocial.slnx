@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="KiteSocial.API.csproj" />
+  <Project Path="KiteSocial.Tests/KiteSocial.Tests.csproj" />
+</Solution>
