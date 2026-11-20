@@ -6,16 +6,16 @@ import 'screens/home_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ApiService().init();
-  runApp(const KiteSocialApp());
+  runApp(const PwrZoneApp());
 }
 
-class KiteSocialApp extends StatelessWidget {
-  const KiteSocialApp({super.key});
+class PwrZoneApp extends StatelessWidget {
+  const PwrZoneApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'KiteSocial',
+      title: 'PwrZone',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0077B6)),

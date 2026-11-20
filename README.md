@@ -1,6 +1,6 @@
-# KiteSocial.API
+# PwrZone ⚡🏄
 
-A modern backend API for a kitesurfing social network, built with **ASP.NET Core (.NET 10)**, **Entity Framework Core (SQLite)**, and **JWT Bearer Authentication**.
+A modern kitesurfing & extreme sports social platform (**PwrZone**), featuring an **ASP.NET Core (.NET 10)** backend API, a cross-platform **Flutter** client (Web/iOS/Android), and robust **PostgreSQL / Docker** containerization.
 
 ---
 

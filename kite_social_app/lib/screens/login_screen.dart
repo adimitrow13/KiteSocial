@@ -81,7 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       const Icon(Icons.surfing, size: 64, color: Color(0xFF0077B6)),
                       const SizedBox(height: 8),
                       Text(
-                        isLogin ? 'Добре дошли в KiteSocial' : 'Създаване на профил',
+                        isLogin ? 'Добре дошли в PwrZone' : 'Създаване на профил',
                         style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 16),

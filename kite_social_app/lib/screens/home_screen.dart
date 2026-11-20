@@ -28,7 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Icon(Icons.surfing, color: Colors.white),
             SizedBox(width: 8),
-            Text('KiteSocial', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+            Text('PwrZone', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
           ],
         ),
         backgroundColor: const Color(0xFF0077B6),
