@@ -45,7 +45,7 @@ public class SpotsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<SpotDto>> CreateSpot([FromBody] CreateSpotDto dto)
     {
-        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userIdStr = User?.FindFirstValue(ClaimTypes.NameIdentifier);
         Guid? userId = Guid.TryParse(userIdStr, out var parsedGuid) ? parsedGuid : null;
 
         var createdSpot = await _spotService.CreateSpotAsync(dto, userId);

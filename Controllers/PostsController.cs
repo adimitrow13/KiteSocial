@@ -140,7 +140,7 @@ public class PostsController : ControllerBase
 
     private Guid? GetCurrentUserId()
     {
-        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userIdStr = User?.FindFirstValue(ClaimTypes.NameIdentifier);
         return Guid.TryParse(userIdStr, out var userId) ? userId : null;
     }
 }
