@@ -21,6 +21,11 @@ builder.Services.AddOpenApi();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
+// Health Checks (Liveness and Readiness probes for Docker / Cloud)
+builder.Services.AddHealthChecks()
+    .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy(), tags: new[] { "live" })
+    .AddDbContextCheck<KiteSocialDbContext>("database", tags: new[] { "ready" });
+
 // Database context (Flexible support for SQLite and PostgreSQL)
 var dbProvider = Environment.GetEnvironmentVariable("DATABASE_PROVIDER")
     ?? builder.Configuration["DatabaseProvider"] 
@@ -158,6 +163,17 @@ app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Health Check Endpoints
+app.MapHealthChecks("/healthz").AllowAnonymous();
+app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("live")
+}).AllowAnonymous();
+app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready")
+}).AllowAnonymous();
 
 app.MapControllers().RequireRateLimiting("api-limit");
 
